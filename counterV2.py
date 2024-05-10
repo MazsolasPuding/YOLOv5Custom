@@ -9,20 +9,19 @@ def main():
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     model = YOLOv5(model_path, device=device)
 
-    # Initialize video capture from webcam
+    # Initialize video capture
     cap = cv2.VideoCapture("E:/Coding/Pollen/datasets/SYNTH_POLEN23E_Manual_Filtered_300_100_filtered_FOR_INF/videos/val.avi")
     if not cap.isOpened():
         print("Error: Could not open video device.")
         return
 
-    # Set webcam properties
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+    # Define the codec and create VideoWriter object
+    fourcc = cv2.VideoWriter_fourcc(*'DIVX')
+    out = cv2.VideoWriter('out.avi', fourcc, 30.0, (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))))
 
     # Cumulative counts dictionary
     cumulative_counts = {}
 
-    # Main loop
     while True:
         ret, frame = cap.read()
         if not ret:
@@ -35,25 +34,28 @@ def main():
         # Update counts for current frame
         frame_counts = {}
         for *xyxy, conf, cls in results.xyxy[0]:
-            label = results.names[int(cls)]  # Assuming all detections are "pollen"
+            label = results.names[int(cls)]
             frame_counts[label] = frame_counts.get(label, 0) + 1
             cumulative_counts[label] = cumulative_counts.get(label, 0) + 1
 
         # Display cumulative counts as a column
         start_y = 30
         for key, value in cumulative_counts.items():
-            cv2.putText(frame, f"{key}: {math.ceil(value / (1920 / 10))}", (10, start_y), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2) # Pseudo Counter
+            cv2.putText(frame, f"{key}: {math.ceil(value / (1920 / 10))}", (10, start_y), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)  # Pseudo Counter
             start_y += 30  # Move to the next line for each new key-value pair
+
+        # Write the frame
+        out.write(frame)
 
         # Show the frame
         cv2.imshow("YOLOv5s Pollen Detection", frame)
 
-        # Exit loop if ESC key is pressed
         if cv2.waitKey(1) == 27:
             break
 
-    # Release resources
+    # Release everything if job is finished
     cap.release()
+    out.release()
     cv2.destroyAllWindows()
 
 if __name__ == "__main__":
